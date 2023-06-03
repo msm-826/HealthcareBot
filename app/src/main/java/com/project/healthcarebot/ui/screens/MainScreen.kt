@@ -37,7 +37,6 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ElevatedCard
@@ -83,6 +82,7 @@ import com.project.healthcarebot.database.Message
 import com.project.healthcarebot.database.MessageViewModel
 import com.project.healthcarebot.speechtotext.InputViewModel
 import com.project.healthcarebot.speechtotext.RecordState
+import com.project.healthcarebot.ui.components.LoadingAnimation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -262,12 +262,6 @@ fun ChatContent(
     val messages by messageViewModel.getFullMessage().collectAsState(initial = emptyList())
     val scrollState = rememberLazyListState()
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            scrollState.animateScrollToItem(messages.size - 1)
-        }
-    }
-
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -291,10 +285,11 @@ fun ChatContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (message.replyText == null || message.replyTimeStamp == null) {
-                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                LoadingAnimation(modifier = Modifier.padding(start = 12.dp))
             } else {
                 ElevatedCard {
                     Column(
@@ -312,7 +307,13 @@ fun ChatContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            scrollState.animateScrollToItem(messages.size - 1)
         }
     }
 }
@@ -375,6 +376,7 @@ fun UserInputTextField(
 ) {
     var textFieldFocusState by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val sendButtonStatus = messageViewModel.replyFetched.value && inputViewModel.inputTextState.inputText.isNotBlank()
 
 
     Surface(
@@ -462,7 +464,7 @@ fun UserInputTextField(
                     textFieldFocusState = false
                     inputViewModel.onTextValueChange("")
                 },
-                enabled = messageViewModel.replyFetched.value,
+                enabled = sendButtonStatus,
                 modifier = modifier
                     .align(Alignment.CenterVertically)
                     .padding(end = 16.dp)

@@ -5,7 +5,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -22,7 +21,8 @@ class MessageViewModel(
     val currentMessageIndex: State<Int>
         get() = _currentMessageIndex
 
-    private val _replyFetched: MutableState<Boolean> = mutableStateOf(true) //initially set as true
+    //initially set as true for enabling the send button
+    private val _replyFetched: MutableState<Boolean> = mutableStateOf(true)
     val replyFetched: State<Boolean>
         get() = _replyFetched
 
@@ -45,7 +45,7 @@ class MessageViewModel(
     }
 
     fun addMessage(message: Message) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch() {
             val deferred = async { messageDao.insertMessage(message) }
             deferred.await()
             _replyFetched.value = false
@@ -53,7 +53,7 @@ class MessageViewModel(
     }
 
     fun updateMessage(id: Int, replyText: String, replyTimeStamp: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch() {
             val deferred = async { messageDao.updateMessage(id, replyText, replyTimeStamp) }
             deferred.await()
             setIndex(_currentMessageIndex.value + 1)
@@ -62,7 +62,7 @@ class MessageViewModel(
     }
 
     fun clearAllMessages() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch() {
             val deferred = async { messageDao.clearMessage() }
             deferred.await()
             setIndex(0)
