@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">HealthcareBot</string>
+    <string name="get_started">"Get Started"</string>
+    <string name="textfield_hint">Message</string>
+    <string name="send">Send</string>
+    <string name="mic">Microphone</string>
+    <string name="home">Home</string>
+    <string name="settings">Settings</string>
+    <string name="clearAll">Clear Chat History</string>
+    <string name="backupchat">Backup/Restore Chat</string>
+</resources>
