@@ -30,7 +30,6 @@ class MessageViewModel(
     val isLoading = _isLoading.asStateFlow()
 
     init {
-
         viewModelScope.launch {
             val deferred = async { setIndex(messageDao.getLastMessageIndex() + 1) }
             deferred.await()
@@ -45,7 +44,7 @@ class MessageViewModel(
     }
 
     fun addMessage(message: Message) {
-        viewModelScope.launch() {
+        viewModelScope.launch {
             val deferred = async { messageDao.insertMessage(message) }
             deferred.await()
             _replyFetched.value = false
@@ -53,7 +52,7 @@ class MessageViewModel(
     }
 
     fun updateMessage(id: Int, replyText: String, replyTimeStamp: Long) {
-        viewModelScope.launch() {
+        viewModelScope.launch {
             val deferred = async { messageDao.updateMessage(id, replyText, replyTimeStamp) }
             deferred.await()
             setIndex(_currentMessageIndex.value + 1)
@@ -62,7 +61,7 @@ class MessageViewModel(
     }
 
     fun clearAllMessages() {
-        viewModelScope.launch() {
+        viewModelScope.launch {
             val deferred = async { messageDao.clearMessage() }
             deferred.await()
             setIndex(0)

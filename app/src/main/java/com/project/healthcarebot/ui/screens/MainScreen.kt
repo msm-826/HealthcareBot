@@ -1,6 +1,5 @@
 package com.project.healthcarebot.ui.screens
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -35,7 +34,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -172,16 +170,10 @@ fun DrawerContentOfModalDrawer(
                 label = stringResource(R.string.home),
                 icon = Icons.Default.Home,
                 drawerState = drawerState,
-                scope = scope)
+                scope = scope
+            )
             DrawerItem(
                 id = 2,
-                selectedItemId = selectedItemId,
-                label = stringResource(R.string.settings),
-                icon = Icons.Default.Settings,
-                drawerState = drawerState,
-                scope = scope)
-            DrawerItem(
-                id = 3,
                 selectedItemId = selectedItemId,
                 label = stringResource(R.string.clearAll),
                 icon = Icons.Default.ClearAll,
@@ -215,7 +207,10 @@ fun DrawerItem(
         icon = { Icon(imageVector = icon, contentDescription = null) },
         onClick = {
             scope.launch { drawerState.close() }
-            selectedItemId.value = id
+            selectedItemId.value = when (id) {
+                2 -> 1 // when clicked on Clear Chat history no need for navigation
+                else -> id
+            }
             onSelect()
         },
         modifier = modifier.padding(vertical = 4.dp, horizontal = 16.dp)
@@ -313,7 +308,7 @@ fun ChatContent(
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
-            scrollState.animateScrollToItem(messages.size - 1)
+            scrollState.animateScrollToItem(messages.size)
         }
     }
 }
@@ -344,8 +339,8 @@ fun MicrophoneButton(
         modifier = modifier
             .size(72.dp)
             .scale(buttonScale)
-            .background(color = MaterialTheme.colorScheme.inversePrimary, shape = CircleShape)
             .clip(CircleShape)
+            .background(color = MaterialTheme.colorScheme.primary)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -361,8 +356,7 @@ fun MicrophoneButton(
     ) {
         Icon(
             imageVector = Icons.Filled.Mic,
-            contentDescription = stringResource(id = R.string.mic),
-            tint = LocalContentColor.current
+            contentDescription = stringResource(id = R.string.mic)
         )
     }
 }
@@ -380,7 +374,7 @@ fun UserInputTextField(
 
 
     Surface(
-        tonalElevation = 2.dp, color = MaterialTheme.colorScheme.inversePrimary
+        tonalElevation = 2.dp
     ) {
         Row(
             modifier = modifier
@@ -437,13 +431,12 @@ fun UserInputTextField(
                             .align(Alignment.CenterStart)
                             .padding(start = 32.dp),
                         text = stringResource(id = R.string.textfield_hint),
-                        style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
             }
             IconButton(
                 onClick = {
-                    Log.d("MyTag", "Current Index: ${messageViewModel.currentMessageIndex}")
                     messageViewModel.addMessage(
                         Message(
                             messageText = inputViewModel.inputTextState.inputText,
