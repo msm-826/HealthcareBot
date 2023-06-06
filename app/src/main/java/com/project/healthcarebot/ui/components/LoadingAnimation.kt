@@ -29,9 +29,11 @@ fun LoadingAnimation(
     circleSize: Dp = 16.dp,
     circleColor: Color = MaterialTheme.colorScheme.primary,
     spaceBetween: Dp = 8.dp,
-    travelDistance: Dp = 12.dp
+    travelDistance: Dp = 16.dp
 ) {
     val circles = listOf(
+        remember { Animatable(initialValue = 0f) },
+        remember { Animatable(initialValue = 0f) },
         remember { Animatable(initialValue = 0f) },
         remember { Animatable(initialValue = 0f) },
         remember { Animatable(initialValue = 0f) }

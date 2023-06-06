@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -34,10 +35,10 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,6 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -71,6 +73,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -128,14 +131,8 @@ fun MainContentOfModalDrawer(
                     .fillMaxHeight()
                     .navigationBarsPadding()
                     .imePadding(),
-                verticalArrangement = Arrangement.Bottom
+                verticalArrangement = Arrangement.Bottom,
             ) {
-                MicrophoneButton(
-                    inputViewModel = inputViewModel,
-                    Modifier
-                        .align(Alignment.End)
-                        .padding(end = 8.dp, bottom = 16.dp)
-                )
                 UserInputTextField(
                     scope = scope,
                     messageViewModel = messageViewModel,
@@ -260,52 +257,58 @@ fun ChatContent(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(horizontal = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(32.dp),
         state = scrollState,
     ) {
         items(messages) {message ->
-            ElevatedCard {
-                Column(
-                    modifier = Modifier.padding(8.dp),
-                ) {
-                    Text(
-                        text = message.messageText,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = convertTimestampToDateTime(message.messageTimeStamp),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-
             Spacer(modifier = Modifier.height(8.dp))
-
-            if (message.replyText == null || message.replyTimeStamp == null) {
-                Spacer(modifier = Modifier.height(16.dp))
-                LoadingAnimation(modifier = Modifier.padding(start = 12.dp))
-            } else {
-                ElevatedCard {
+            Row(modifier = Modifier
+                .fillMaxSize()
+                .padding(end = 32.dp), horizontalArrangement = Arrangement.Start) {
+                Card(shape = RoundedCornerShape(0.dp, 16.dp, 16.dp, 16.dp)) {
                     Column(
-                        modifier = Modifier.padding(8.dp),
+                        modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = message.replyText,
+                            text = message.messageText,
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = convertTimestampToDateTime(message.replyTimeStamp),
+                            text = convertTimestampToDateTime(message.messageTimeStamp),
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            if (message.replyText == null || message.replyTimeStamp == null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.End) {
+                    LoadingAnimation(modifier = Modifier.padding(start = 12.dp))
+                }
+            } else {
+                Row(modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 32.dp), horizontalArrangement = Arrangement.End) {
+                    Card(shape = RoundedCornerShape(16.dp, 0.dp, 16.dp, 16.dp)) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                        ) {
+                            Text(
+                                text = message.replyText,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = convertTimestampToDateTime(message.replyTimeStamp),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
-
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             scrollState.animateScrollToItem(messages.size)
@@ -361,6 +364,7 @@ fun MicrophoneButton(
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun UserInputTextField(
     scope: CoroutineScope,
@@ -370,36 +374,73 @@ fun UserInputTextField(
 ) {
     var textFieldFocusState by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val sendButtonStatus = messageViewModel.replyFetched.value && inputViewModel.inputTextState.inputText.isNotBlank()
 
-
-    Surface(
-        tonalElevation = 2.dp
-    ) {
-        Row(
+    Row {
+        Surface(
+            tonalElevation = 2.dp,
+            shape = RoundedCornerShape(16.dp),
             modifier = modifier
                 .fillMaxWidth()
-                .height(100.dp),
+                .weight(1f)
+                .padding(start = 8.dp)
         ) {
-            Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .weight(1f)
-                    .align(Alignment.Bottom)
-            ) {
+            Row(modifier = modifier.height(104.dp)) {
                 BasicTextField(
+                    decorationBox = {
+                            innerTextField ->
+                        Row {
+                            if (inputViewModel.inputTextState.inputText.isEmpty()) {
+                                Text("Message : ")
+                            }
+                            innerTextField()
+                        }
+                    },
                     value = inputViewModel.inputTextState.inputText,
                     onValueChange = { newValue -> inputViewModel.onTextValueChange(newValue) },
-                    modifier = modifier
-                        .fillMaxWidth()
-                        .padding(start = 32.dp)
-                        .align(Alignment.CenterStart)
-                        .onFocusChanged { state -> textFieldFocusState = state.isFocused },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Text,
                         imeAction = ImeAction.Send
                     ),
-                    keyboardActions = KeyboardActions(onSend = {
+                    keyboardActions = KeyboardActions(
+                        onSend = {
+                            keyboardController?.hide()
+                            messageViewModel.addMessage(
+                                Message(
+                                    messageText = inputViewModel.inputTextState.inputText,
+                                    messageTimeStamp = System.currentTimeMillis(),
+                                    id = messageViewModel.currentMessageIndex.value
+                                )
+                            )
+                            scope.launch {
+                                delay(2000)
+                                messageViewModel.updateMessage(
+                                    id = messageViewModel.currentMessageIndex.value,
+                                    replyText = "This is a Reply",
+                                    replyTimeStamp = System.currentTimeMillis()
+                                )
+                            }
+
+                            focusManager.clearFocus()
+                            textFieldFocusState = false
+                            inputViewModel.onTextValueChange("")
+                        }
+                    ),
+                    maxLines = 4,
+                    cursorBrush = SolidColor(LocalContentColor.current),
+                    textStyle = LocalTextStyle.current.copy(color = LocalContentColor.current),
+                    modifier = modifier
+                        .padding(start = 16.dp)
+                        .align(Alignment.CenterVertically)
+                        .onFocusChanged { state ->
+                            textFieldFocusState = state.isFocused
+                        }
+                        .weight(1f)
+                )
+
+                IconButton(
+                    onClick = {
                         messageViewModel.addMessage(
                             Message(
                                 messageText = inputViewModel.inputTextState.inputText,
@@ -411,7 +452,7 @@ fun UserInputTextField(
                             delay(2000)
                             messageViewModel.updateMessage(
                                 id = messageViewModel.currentMessageIndex.value,
-                                replyText = "This is a Reply",
+                                replyText = "This is a very very very very very very very very very very very very very very very very very very very very very very very very very long reply",
                                 replyTimeStamp = System.currentTimeMillis()
                             )
                         }
@@ -419,54 +460,26 @@ fun UserInputTextField(
                         focusManager.clearFocus()
                         textFieldFocusState = false
                         inputViewModel.onTextValueChange("")
-                    }),
-                    maxLines = 4,
-                    cursorBrush = SolidColor(LocalContentColor.current),
-                    textStyle = LocalTextStyle.current.copy(color = LocalContentColor.current),
-                )
-
-                if (inputViewModel.inputTextState.inputText.isEmpty() && !textFieldFocusState) {
-                    Text(
-                        modifier = modifier
-                            .align(Alignment.CenterStart)
-                            .padding(start = 32.dp),
-                        text = stringResource(id = R.string.textfield_hint),
-                        style = MaterialTheme.typography.bodyLarge
+                    },
+                    enabled = sendButtonStatus,
+                    modifier = modifier
+                        .align(Alignment.CenterVertically)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Send,
+                        contentDescription = stringResource(id = R.string.send),
+                        modifier = modifier.size(24.dp)
                     )
                 }
             }
-            IconButton(
-                onClick = {
-                    messageViewModel.addMessage(
-                        Message(
-                            messageText = inputViewModel.inputTextState.inputText,
-                            messageTimeStamp = System.currentTimeMillis(),
-                            id = messageViewModel.currentMessageIndex.value
-                        )
-                    )
-                    scope.launch {
-                        delay(2000)
-                        messageViewModel.updateMessage(
-                            id = messageViewModel.currentMessageIndex.value,
-                            replyText = "This is a Reply",
-                            replyTimeStamp = System.currentTimeMillis()
-                        )
-                    }
-
-                    focusManager.clearFocus()
-                    textFieldFocusState = false
-                    inputViewModel.onTextValueChange("")
-                },
-                enabled = sendButtonStatus,
-                modifier = modifier
-                    .align(Alignment.CenterVertically)
-                    .padding(end = 16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Send,
-                    contentDescription = stringResource(id = R.string.send),
-                )
-            }
         }
+
+        MicrophoneButton(
+            inputViewModel = inputViewModel,
+            modifier = modifier
+                .align(Alignment.CenterVertically)
+                .padding(start = 8.dp, top = 16.dp, end = 8.dp, bottom = 16.dp)
+        )
     }
 }
