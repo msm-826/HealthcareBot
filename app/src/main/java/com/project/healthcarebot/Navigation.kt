@@ -5,22 +5,27 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.project.healthcarebot.database.MessageViewModel
+import com.project.healthcarebot.observeconnectivity.ConnectivityViewModel
 import com.project.healthcarebot.ui.screens.LoginScreen
 import com.project.healthcarebot.ui.screens.MainScreen
 import com.project.healthcarebot.speechtotext.InputViewModel
 
 @Composable
-fun Navigation(messageViewModel: MessageViewModel, inputViewModel: InputViewModel) {
+fun Navigation(
+    messageViewModel: MessageViewModel,
+    inputViewModel: InputViewModel,
+    connectivityViewModel: ConnectivityViewModel
+) {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
         startDestination = ScreenList.LoginScreen.route
     ) {
         composable(route = ScreenList.LoginScreen.route) {
-            LoginScreen(navController = navController)
+            LoginScreen(navController = navController, connectivityViewModel = connectivityViewModel)
         }
         composable(route = ScreenList.MainScreen.route) {
-            MainScreen(messageViewModel = messageViewModel, inputViewModel = inputViewModel)
+            MainScreen(messageViewModel = messageViewModel, inputViewModel = inputViewModel, connectivityViewModel = connectivityViewModel)
         }
     }
 }

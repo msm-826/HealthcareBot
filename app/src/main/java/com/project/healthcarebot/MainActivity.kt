@@ -18,6 +18,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.room.Room
 import com.project.healthcarebot.database.MessageDatabase
 import com.project.healthcarebot.database.MessageViewModel
+import com.project.healthcarebot.observeconnectivity.ConnectivityViewModel
+import com.project.healthcarebot.observeconnectivity.NetworkConnectivityObserver
 import com.project.healthcarebot.permission.InternetPermissionTextProvider
 import com.project.healthcarebot.permission.PermissionDialog
 import com.project.healthcarebot.permission.PermissionViewModel
@@ -64,9 +66,20 @@ class MainActivity : ComponentActivity() {
         }
     )
 
+    //Connectivity Manager
+    private val connectivityViewModel by viewModels<ConnectivityViewModel> (
+        factoryProducer = {
+            object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    return ConnectivityViewModel(NetworkConnectivityObserver(applicationContext)) as T
+                }
+            }
+        }
+    )
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
 
         installSplashScreen().apply {
             setKeepOnScreenCondition {
@@ -122,7 +135,11 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                Navigation(messageViewModel = messageViewModel, inputViewModel = inputViewModel)
+                Navigation(
+                    messageViewModel = messageViewModel,
+                    inputViewModel = inputViewModel,
+                    connectivityViewModel = connectivityViewModel
+                )
             }
         }
     }

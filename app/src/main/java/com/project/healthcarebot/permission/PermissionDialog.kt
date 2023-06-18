@@ -74,7 +74,7 @@ class RecordAudioPermissionTextProvider: PermissionTextProvider {
             "It seems you permanently declined microphone permission. " +
                     "You can go to the app settings to grant it."
         } else {
-            "This app needs access to your microphone so that you can speak the text."
+            "This app needs access to your microphone so that you can give prompts in the form of voice."
         }
     }
 }

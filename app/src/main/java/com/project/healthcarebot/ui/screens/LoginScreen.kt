@@ -1,5 +1,6 @@
 package com.project.healthcarebot.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +14,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -21,12 +24,18 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.project.healthcarebot.R
 import com.project.healthcarebot.ScreenList
+import com.project.healthcarebot.observeconnectivity.ConnectivityObserver
+import com.project.healthcarebot.observeconnectivity.ConnectivityViewModel
+import com.project.healthcarebot.ui.components.NetworkStateAlertDialog
 
 @Composable
 fun LoginScreen(
     navController: NavController,
+    connectivityViewModel: ConnectivityViewModel,
     modifier: Modifier = Modifier
 ) {
+    val networkStatus by connectivityViewModel.networkStatus.collectAsState()
+
     Surface {
         Column(
             modifier = modifier
@@ -35,7 +44,19 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.weight(1f))
             ElevatedButton(
-                onClick = { navController.navigate(ScreenList.MainScreen.route) },
+                onClick = {
+                    Log.d("NetworkTag", "networkStatus: $networkStatus")
+                    when (networkStatus) {
+                        ConnectivityObserver.Status.Losing,
+                        ConnectivityObserver.Status.Lost,
+                        ConnectivityObserver.Status.Unavailable -> {
+                            connectivityViewModel.toggleDialog(true)
+                        }
+                        else -> {
+                            navController.navigate(ScreenList.MainScreen.route)
+                        }
+                    }
+                },
                 shape = RoundedCornerShape(8.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
                 modifier = modifier
@@ -55,7 +76,14 @@ fun LoginScreen(
                 )
             }
         }
+        NetworkStateAlertDialog(
+            onRetry = {
+                if (networkStatus == ConnectivityObserver.Status.Available) {
+                    connectivityViewModel.toggleDialog(false)
+                }
+            },
+            onDismiss = { connectivityViewModel.toggleDialog(false)},
+            showDialog = connectivityViewModel.showDialog
+        )
     }
-
-
 }

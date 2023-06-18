@@ -1,5 +1,6 @@
 package com.project.healthcarebot.ui.screens
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -62,7 +63,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -73,7 +73,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -81,9 +80,12 @@ import androidx.compose.ui.unit.dp
 import com.project.healthcarebot.R
 import com.project.healthcarebot.database.Message
 import com.project.healthcarebot.database.MessageViewModel
+import com.project.healthcarebot.observeconnectivity.ConnectivityObserver
+import com.project.healthcarebot.observeconnectivity.ConnectivityViewModel
 import com.project.healthcarebot.speechtotext.InputViewModel
 import com.project.healthcarebot.speechtotext.RecordState
 import com.project.healthcarebot.ui.components.LoadingAnimation
+import com.project.healthcarebot.ui.components.NetworkStateAlertDialog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -93,14 +95,35 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(messageViewModel: MessageViewModel, inputViewModel: InputViewModel, modifier: Modifier = Modifier){
+fun MainScreen(
+    messageViewModel: MessageViewModel,
+    inputViewModel: InputViewModel,
+    connectivityViewModel: ConnectivityViewModel,
+    modifier: Modifier = Modifier
+){
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        drawerContent = { DrawerContentOfModalDrawer(messageViewModel, drawerState, scope, modifier = modifier) },
-        content = { MainContentOfModalDrawer(messageViewModel, inputViewModel, drawerState, scope, modifier = modifier) }
+        drawerContent = {
+            DrawerContentOfModalDrawer(
+                messageViewModel = messageViewModel,
+                drawerState = drawerState,
+                scope = scope,
+                modifier = modifier
+            )
+        },
+        content = {
+            MainContentOfModalDrawer(
+                messageViewModel = messageViewModel,
+                inputViewModel = inputViewModel,
+                connectivityViewModel = connectivityViewModel,
+                drawerState = drawerState,
+                scope = scope,
+                modifier = modifier
+            )
+        }
     )
 }
 
@@ -109,6 +132,7 @@ fun MainScreen(messageViewModel: MessageViewModel, inputViewModel: InputViewMode
 fun MainContentOfModalDrawer(
     messageViewModel: MessageViewModel,
     inputViewModel: InputViewModel,
+    connectivityViewModel: ConnectivityViewModel,
     drawerState: DrawerState,
     scope: CoroutineScope,
     modifier: Modifier = Modifier
@@ -124,7 +148,7 @@ fun MainContentOfModalDrawer(
                 messageViewModel = messageViewModel,
                 modifier = modifier
                     .padding(paddingValues)
-                    .height(this.maxHeight - 172.dp)
+                    .height(this.maxHeight - 180.dp)
             )
             Column(
                 modifier = modifier
@@ -136,7 +160,8 @@ fun MainContentOfModalDrawer(
                 UserInputTextField(
                     scope = scope,
                     messageViewModel = messageViewModel,
-                    inputViewModel = inputViewModel
+                    inputViewModel = inputViewModel,
+                    connectivityViewModel = connectivityViewModel,
                 )
             }
         }
@@ -284,8 +309,11 @@ fun ChatContent(
             Spacer(modifier = Modifier.height(8.dp))
             if (message.replyText == null || message.replyTimeStamp == null) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.End) {
-                    LoadingAnimation(modifier = Modifier.padding(start = 12.dp))
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    LoadingAnimation(modifier = Modifier.padding(bottom = 16.dp))
                 }
             } else {
                 Row(modifier = Modifier
@@ -325,8 +353,10 @@ private fun convertTimestampToDateTime(timestamp: Long): String {
 @Composable
 fun MicrophoneButton(
     inputViewModel: InputViewModel,
+    connectivityViewModel: ConnectivityViewModel,
     modifier: Modifier = Modifier
 ) {
+    val networkStatus by connectivityViewModel.networkStatus.collectAsState()
     var pressed by remember { mutableStateOf(false) }
     val buttonScale by animateFloatAsState(
         targetValue = if (pressed) 0.8f else 1f,
@@ -347,11 +377,21 @@ fun MicrophoneButton(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
-                        pressed = true
-                        inputViewModel.send(RecordState.StartRecord)
-                        awaitRelease()
-                        pressed = false
-                        inputViewModel.send(RecordState.EndRecord)
+                        when (networkStatus) {
+                            ConnectivityObserver.Status.Losing,
+                            ConnectivityObserver.Status.Lost,
+                            ConnectivityObserver.Status.Unavailable -> {
+                                connectivityViewModel.toggleDialog(true)
+                            }
+
+                            else -> {
+                                pressed = true
+                                inputViewModel.send(RecordState.StartRecord)
+                                awaitRelease()
+                                pressed = false
+                                inputViewModel.send(RecordState.EndRecord)
+                            }
+                        }
                     }
                 )
             },
@@ -362,20 +402,29 @@ fun MicrophoneButton(
             contentDescription = stringResource(id = R.string.mic)
         )
     }
+    NetworkStateAlertDialog(
+        onRetry = {
+            if (networkStatus == ConnectivityObserver.Status.Available) {
+                connectivityViewModel.toggleDialog(false)
+            }
+        },
+        onDismiss = { connectivityViewModel.toggleDialog(false)},
+        showDialog = connectivityViewModel.showDialog
+    )
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun UserInputTextField(
     scope: CoroutineScope,
     messageViewModel: MessageViewModel,
     inputViewModel: InputViewModel,
+    connectivityViewModel: ConnectivityViewModel,
     modifier: Modifier = Modifier
 ) {
     var textFieldFocusState by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
-    val keyboardController = LocalSoftwareKeyboardController.current
     val sendButtonStatus = messageViewModel.replyFetched.value && inputViewModel.inputTextState.inputText.isNotBlank()
+    val networkStatus by connectivityViewModel.networkStatus.collectAsState()
 
     Row {
         Surface(
@@ -384,7 +433,7 @@ fun UserInputTextField(
             modifier = modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(start = 8.dp)
+                .padding(start = 8.dp, bottom = 8.dp)
         ) {
             Row(modifier = modifier.height(104.dp)) {
                 BasicTextField(
@@ -405,26 +454,36 @@ fun UserInputTextField(
                     ),
                     keyboardActions = KeyboardActions(
                         onSend = {
-                            keyboardController?.hide()
-                            messageViewModel.addMessage(
-                                Message(
-                                    messageText = inputViewModel.inputTextState.inputText,
-                                    messageTimeStamp = System.currentTimeMillis(),
-                                    id = messageViewModel.currentMessageIndex.value
-                                )
-                            )
-                            scope.launch {
-                                delay(2000)
-                                messageViewModel.updateMessage(
-                                    id = messageViewModel.currentMessageIndex.value,
-                                    replyText = "This is a Reply",
-                                    replyTimeStamp = System.currentTimeMillis()
-                                )
-                            }
+                            Log.d("NetworkTag", "network status in keyboard send: $networkStatus")
+                            when (networkStatus) {
+                                ConnectivityObserver.Status.Losing,
+                                ConnectivityObserver.Status.Lost,
+                                ConnectivityObserver.Status.Unavailable -> {
+                                    connectivityViewModel.toggleDialog(true)
+                                }
 
-                            focusManager.clearFocus()
-                            textFieldFocusState = false
-                            inputViewModel.onTextValueChange("")
+                                else -> {
+                                    messageViewModel.addMessage(
+                                        Message(
+                                            messageText = inputViewModel.inputTextState.inputText,
+                                            messageTimeStamp = System.currentTimeMillis(),
+                                            id = messageViewModel.currentMessageIndex.value
+                                        )
+                                    )
+                                    scope.launch {
+                                        delay(2000)
+                                        messageViewModel.updateMessage(
+                                            id = messageViewModel.currentMessageIndex.value,
+                                            replyText = "This is a Reply",
+                                            replyTimeStamp = System.currentTimeMillis()
+                                        )
+                                    }
+
+                                    focusManager.clearFocus()
+                                    textFieldFocusState = false
+                                    inputViewModel.onTextValueChange("")
+                                }
+                            }
                         }
                     ),
                     maxLines = 4,
@@ -441,25 +500,36 @@ fun UserInputTextField(
 
                 IconButton(
                     onClick = {
-                        messageViewModel.addMessage(
-                            Message(
-                                messageText = inputViewModel.inputTextState.inputText,
-                                messageTimeStamp = System.currentTimeMillis(),
-                                id = messageViewModel.currentMessageIndex.value
-                            )
-                        )
-                        scope.launch {
-                            delay(2000)
-                            messageViewModel.updateMessage(
-                                id = messageViewModel.currentMessageIndex.value,
-                                replyText = "This is a very very very very very very very very very very very very very very very very very very very very very very very very very long reply",
-                                replyTimeStamp = System.currentTimeMillis()
-                            )
-                        }
+                        Log.d("NetworkTag", "network status in send: $networkStatus")
+                        when (networkStatus) {
+                            ConnectivityObserver.Status.Losing,
+                            ConnectivityObserver.Status.Lost,
+                            ConnectivityObserver.Status.Unavailable -> {
+                                connectivityViewModel.toggleDialog(true)
+                            }
 
-                        focusManager.clearFocus()
-                        textFieldFocusState = false
-                        inputViewModel.onTextValueChange("")
+                            else -> {
+                                messageViewModel.addMessage(
+                                    Message(
+                                        messageText = inputViewModel.inputTextState.inputText,
+                                        messageTimeStamp = System.currentTimeMillis(),
+                                        id = messageViewModel.currentMessageIndex.value
+                                    )
+                                )
+                                scope.launch {
+                                    delay(2000)
+                                    messageViewModel.updateMessage(
+                                        id = messageViewModel.currentMessageIndex.value,
+                                        replyText = "This is a very very very very very very very very very very very very very very very very very long reply",
+                                        replyTimeStamp = System.currentTimeMillis()
+                                    )
+                                }
+
+                                focusManager.clearFocus()
+                                textFieldFocusState = false
+                                inputViewModel.onTextValueChange("")
+                            }
+                        }
                     },
                     enabled = sendButtonStatus,
                     modifier = modifier
@@ -477,9 +547,19 @@ fun UserInputTextField(
 
         MicrophoneButton(
             inputViewModel = inputViewModel,
+            connectivityViewModel = connectivityViewModel,
             modifier = modifier
                 .align(Alignment.CenterVertically)
                 .padding(start = 8.dp, top = 16.dp, end = 8.dp, bottom = 16.dp)
         )
     }
+    NetworkStateAlertDialog(
+        onRetry = {
+            if (networkStatus == ConnectivityObserver.Status.Available) {
+                connectivityViewModel.toggleDialog(false)
+            }
+        },
+        onDismiss = { connectivityViewModel.toggleDialog(false)},
+        showDialog = connectivityViewModel.showDialog
+    )
 }
