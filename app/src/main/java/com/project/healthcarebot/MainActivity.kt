@@ -24,6 +24,8 @@ import com.project.healthcarebot.permission.InternetPermissionTextProvider
 import com.project.healthcarebot.permission.PermissionDialog
 import com.project.healthcarebot.permission.PermissionViewModel
 import com.project.healthcarebot.permission.RecordAudioPermissionTextProvider
+import com.project.healthcarebot.realtimedatabase.RealtimeDatabaseRepository
+import com.project.healthcarebot.realtimedatabase.RealtimeDatabaseViewModel
 import com.project.healthcarebot.speechtotext.InputViewModel
 import com.project.healthcarebot.speechtotext.RealSpeechToText
 import com.project.healthcarebot.ui.theme.HealthcareBotTheme
@@ -72,6 +74,18 @@ class MainActivity : ComponentActivity() {
             object : ViewModelProvider.Factory {
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     return ConnectivityViewModel(NetworkConnectivityObserver(applicationContext)) as T
+                }
+            }
+        }
+    )
+
+    //Firebase Realtime Database
+    private val repository = RealtimeDatabaseRepository()
+    private val realtimeDatabaseViewModel by viewModels<RealtimeDatabaseViewModel> (
+        factoryProducer = {
+            object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    return RealtimeDatabaseViewModel(repository = repository) as T
                 }
             }
         }
@@ -134,11 +148,11 @@ class MainActivity : ComponentActivity() {
                             onGoToAppSettingsClick = ::openAppSettings
                         )
                     }
-
                 Navigation(
                     messageViewModel = messageViewModel,
                     inputViewModel = inputViewModel,
-                    connectivityViewModel = connectivityViewModel
+                    connectivityViewModel = connectivityViewModel,
+                    realtimeDatabaseViewModel = realtimeDatabaseViewModel
                 )
             }
         }

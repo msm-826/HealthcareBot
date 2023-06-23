@@ -82,12 +82,12 @@ import com.project.healthcarebot.database.Message
 import com.project.healthcarebot.database.MessageViewModel
 import com.project.healthcarebot.observeconnectivity.ConnectivityObserver
 import com.project.healthcarebot.observeconnectivity.ConnectivityViewModel
+import com.project.healthcarebot.realtimedatabase.RealtimeDatabaseViewModel
 import com.project.healthcarebot.speechtotext.InputViewModel
 import com.project.healthcarebot.speechtotext.RecordState
 import com.project.healthcarebot.ui.components.LoadingAnimation
 import com.project.healthcarebot.ui.components.NetworkStateAlertDialog
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -99,6 +99,7 @@ fun MainScreen(
     messageViewModel: MessageViewModel,
     inputViewModel: InputViewModel,
     connectivityViewModel: ConnectivityViewModel,
+    realtimeDatabaseViewModel: RealtimeDatabaseViewModel,
     modifier: Modifier = Modifier
 ){
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -119,6 +120,7 @@ fun MainScreen(
                 messageViewModel = messageViewModel,
                 inputViewModel = inputViewModel,
                 connectivityViewModel = connectivityViewModel,
+                realtimeDatabaseViewModel = realtimeDatabaseViewModel,
                 drawerState = drawerState,
                 scope = scope,
                 modifier = modifier
@@ -133,6 +135,7 @@ fun MainContentOfModalDrawer(
     messageViewModel: MessageViewModel,
     inputViewModel: InputViewModel,
     connectivityViewModel: ConnectivityViewModel,
+    realtimeDatabaseViewModel: RealtimeDatabaseViewModel,
     drawerState: DrawerState,
     scope: CoroutineScope,
     modifier: Modifier = Modifier
@@ -158,10 +161,10 @@ fun MainContentOfModalDrawer(
                 verticalArrangement = Arrangement.Bottom,
             ) {
                 UserInputTextField(
-                    scope = scope,
                     messageViewModel = messageViewModel,
                     inputViewModel = inputViewModel,
                     connectivityViewModel = connectivityViewModel,
+                    realtimeDatabaseViewModel = realtimeDatabaseViewModel
                 )
             }
         }
@@ -415,16 +418,17 @@ fun MicrophoneButton(
 
 @Composable
 fun UserInputTextField(
-    scope: CoroutineScope,
     messageViewModel: MessageViewModel,
     inputViewModel: InputViewModel,
     connectivityViewModel: ConnectivityViewModel,
+    realtimeDatabaseViewModel: RealtimeDatabaseViewModel,
     modifier: Modifier = Modifier
 ) {
     var textFieldFocusState by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val sendButtonStatus = messageViewModel.replyFetched.value && inputViewModel.inputTextState.inputText.isNotBlank()
     val networkStatus by connectivityViewModel.networkStatus.collectAsState()
+    val replyStatus by realtimeDatabaseViewModel.replyStatus.collectAsState(null)
 
     Row {
         Surface(
@@ -470,14 +474,9 @@ fun UserInputTextField(
                                             id = messageViewModel.currentMessageIndex.value
                                         )
                                     )
-                                    scope.launch {
-                                        delay(2000)
-                                        messageViewModel.updateMessage(
-                                            id = messageViewModel.currentMessageIndex.value,
-                                            replyText = "This is a Reply",
-                                            replyTimeStamp = System.currentTimeMillis()
-                                        )
-                                    }
+
+                                    //sending to firebase realtime database
+                                    realtimeDatabaseViewModel.addEntry(inputViewModel.inputTextState.inputText)
 
                                     focusManager.clearFocus()
                                     textFieldFocusState = false
@@ -509,6 +508,7 @@ fun UserInputTextField(
                             }
 
                             else -> {
+                                //adding to local database
                                 messageViewModel.addMessage(
                                     Message(
                                         messageText = inputViewModel.inputTextState.inputText,
@@ -516,14 +516,9 @@ fun UserInputTextField(
                                         id = messageViewModel.currentMessageIndex.value
                                     )
                                 )
-                                scope.launch {
-                                    delay(2000)
-                                    messageViewModel.updateMessage(
-                                        id = messageViewModel.currentMessageIndex.value,
-                                        replyText = "This is a very very very very very very very very very very very very very very very very very long reply",
-                                        replyTimeStamp = System.currentTimeMillis()
-                                    )
-                                }
+
+                                //sending to firebase realtime database
+                                realtimeDatabaseViewModel.addEntry(inputViewModel.inputTextState.inputText)
 
                                 focusManager.clearFocus()
                                 textFieldFocusState = false
@@ -542,6 +537,16 @@ fun UserInputTextField(
                         modifier = modifier.size(24.dp)
                     )
                 }
+            }
+        }
+
+        LaunchedEffect(replyStatus) {
+            replyStatus?.reply?.let {reply ->
+                messageViewModel.updateMessage(
+                    id = messageViewModel.currentMessageIndex.value,
+                    replyText = reply,
+                    replyTimeStamp = System.currentTimeMillis()
+                )
             }
         }
 
