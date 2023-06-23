@@ -1,36 +1,36 @@
 package com.project.healthcarebot.ui.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.DialogProperties
 import com.project.healthcarebot.R
 
 @Composable
-fun NetworkStateAlertDialog(
-    onRetry: () -> Unit,
+fun PermissionDialog(
+    onRequest: () -> Unit,
     onDismiss: () -> Unit,
-    showDialog: State<Boolean>,
+    text: String,
+    showDialog: Boolean,
 ) {
-    if (showDialog.value) {
+    if (showDialog) {
         AlertDialog(
             onDismissRequest = { onDismiss() },
             icon = {
-                   Icon(imageVector = Icons.Default.WifiOff, contentDescription = null)
+                Icon(imageVector = Icons.Default.Mic, contentDescription = null)
             },
-            title = { Text(text = stringResource(R.string.no_internet_connection)) },
-            text = { Text(text = stringResource(R.string.please_check_your_internet_connection_and_try_again)) },
+            title = { Text(text = stringResource(R.string.microphone_permission)) },
+            text = { Text(text = text) },
             confirmButton = {
                 TextButton(
-                    onClick = { onRetry() }
+                    onClick = { onRequest() }
                 ) {
-                    Text(stringResource(R.string.retry))
+                    Text(stringResource(R.string.request_permission))
                 }
             },
             dismissButton = {
@@ -41,8 +41,8 @@ fun NetworkStateAlertDialog(
                 }
             },
             properties = DialogProperties(
-                dismissOnBackPress = false,
-                dismissOnClickOutside = false
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true
             )
         )
     }

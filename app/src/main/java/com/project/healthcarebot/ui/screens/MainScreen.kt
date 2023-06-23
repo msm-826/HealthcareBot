@@ -58,6 +58,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -77,11 +78,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import com.project.healthcarebot.R
 import com.project.healthcarebot.database.Message
 import com.project.healthcarebot.database.MessageViewModel
 import com.project.healthcarebot.observeconnectivity.ConnectivityObserver
 import com.project.healthcarebot.observeconnectivity.ConnectivityViewModel
+import com.project.healthcarebot.ui.components.PermissionDialog
 import com.project.healthcarebot.realtimedatabase.RealtimeDatabaseViewModel
 import com.project.healthcarebot.speechtotext.InputViewModel
 import com.project.healthcarebot.speechtotext.RecordState
@@ -185,7 +190,7 @@ fun DrawerContentOfModalDrawer(
         drawerShape = RectangleShape,
         modifier = modifier
     ) {
-        val selectedItemId = remember { mutableStateOf(1) }
+        val selectedItemId = remember { mutableIntStateOf(1) }
 
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -340,9 +345,11 @@ fun ChatContent(
             }
         }
     }
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            scrollState.animateScrollToItem(messages.size)
+
+    if (messages.isNotEmpty()) {
+        LaunchedEffect(messages) {
+            Log.d("scrollTag", "scrolled")
+            scrollState.animateScrollToItem(messages.size - 1)
         }
     }
 }
@@ -353,6 +360,7 @@ private fun convertTimestampToDateTime(timestamp: Long): String {
     return "Sent at: $dateTime"
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MicrophoneButton(
     inputViewModel: InputViewModel,
@@ -360,6 +368,9 @@ fun MicrophoneButton(
     modifier: Modifier = Modifier
 ) {
     val networkStatus by connectivityViewModel.networkStatus.collectAsState()
+    val micPermissionState = rememberPermissionState(android.Manifest.permission.RECORD_AUDIO)
+    var showPermissionDialog by remember { mutableStateOf(false) }
+
     var pressed by remember { mutableStateOf(false) }
     val buttonScale by animateFloatAsState(
         targetValue = if (pressed) 0.8f else 1f,
@@ -388,11 +399,17 @@ fun MicrophoneButton(
                             }
 
                             else -> {
-                                pressed = true
-                                inputViewModel.send(RecordState.StartRecord)
-                                awaitRelease()
-                                pressed = false
-                                inputViewModel.send(RecordState.EndRecord)
+                                Log.d("permissionTag", "Permission Status: ${micPermissionState.status}")
+                                if (micPermissionState.status.isGranted) {
+                                    showPermissionDialog = false
+                                    pressed = true
+                                    inputViewModel.send(RecordState.StartRecord)
+                                    awaitRelease()
+                                    pressed = false
+                                    inputViewModel.send(RecordState.EndRecord)
+                                } else {
+                                    showPermissionDialog = true
+                                }
                             }
                         }
                     }
@@ -405,6 +422,17 @@ fun MicrophoneButton(
             contentDescription = stringResource(id = R.string.mic)
         )
     }
+
+    PermissionDialog(
+        onRequest = {
+            micPermissionState.launchPermissionRequest()
+            showPermissionDialog = false
+        },
+        onDismiss = { showPermissionDialog = false },
+        text = stringResource(R.string.request_microphone_permission),
+        showDialog = showPermissionDialog
+    )
+
     NetworkStateAlertDialog(
         onRetry = {
             if (networkStatus == ConnectivityObserver.Status.Available) {
@@ -459,28 +487,30 @@ fun UserInputTextField(
                     keyboardActions = KeyboardActions(
                         onSend = {
                             Log.d("NetworkTag", "network status in keyboard send: $networkStatus")
-                            when (networkStatus) {
-                                ConnectivityObserver.Status.Losing,
-                                ConnectivityObserver.Status.Lost,
-                                ConnectivityObserver.Status.Unavailable -> {
-                                    connectivityViewModel.toggleDialog(true)
-                                }
+                            if (sendButtonStatus) {
+                                when (networkStatus) {
+                                    ConnectivityObserver.Status.Losing,
+                                    ConnectivityObserver.Status.Lost,
+                                    ConnectivityObserver.Status.Unavailable -> {
+                                        connectivityViewModel.toggleDialog(true)
+                                    }
 
-                                else -> {
-                                    messageViewModel.addMessage(
-                                        Message(
-                                            messageText = inputViewModel.inputTextState.inputText,
-                                            messageTimeStamp = System.currentTimeMillis(),
-                                            id = messageViewModel.currentMessageIndex.value
+                                    else -> {
+                                        messageViewModel.addMessage(
+                                            Message(
+                                                messageText = inputViewModel.inputTextState.inputText,
+                                                messageTimeStamp = System.currentTimeMillis(),
+                                                id = messageViewModel.currentMessageIndex.value
+                                            )
                                         )
-                                    )
 
-                                    //sending to firebase realtime database
-                                    realtimeDatabaseViewModel.addEntry(inputViewModel.inputTextState.inputText)
+                                        //sending to firebase realtime database
+                                        realtimeDatabaseViewModel.addEntry(inputViewModel.inputTextState.inputText)
 
-                                    focusManager.clearFocus()
-                                    textFieldFocusState = false
-                                    inputViewModel.onTextValueChange("")
+                                        focusManager.clearFocus()
+                                        textFieldFocusState = false
+                                        inputViewModel.onTextValueChange("")
+                                    }
                                 }
                             }
                         }

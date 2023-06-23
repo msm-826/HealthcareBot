@@ -84,4 +84,7 @@ dependencies {
     //Realtime Database Firebase
     implementation platform('com.google.firebase:firebase-bom:32.1.1')
     implementation 'com.google.firebase:firebase-database-ktx'
+
+    //Permission management
+    implementation 'com.google.accompanist:accompanist-permissions:0.31.4-beta'
 }

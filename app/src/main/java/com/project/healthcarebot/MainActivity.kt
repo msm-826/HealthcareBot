@@ -1,17 +1,9 @@
 package com.project.healthcarebot
 
-import android.Manifest
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.runtime.LaunchedEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -20,10 +12,6 @@ import com.project.healthcarebot.database.MessageDatabase
 import com.project.healthcarebot.database.MessageViewModel
 import com.project.healthcarebot.observeconnectivity.ConnectivityViewModel
 import com.project.healthcarebot.observeconnectivity.NetworkConnectivityObserver
-import com.project.healthcarebot.permission.InternetPermissionTextProvider
-import com.project.healthcarebot.permission.PermissionDialog
-import com.project.healthcarebot.permission.PermissionViewModel
-import com.project.healthcarebot.permission.RecordAudioPermissionTextProvider
 import com.project.healthcarebot.realtimedatabase.RealtimeDatabaseRepository
 import com.project.healthcarebot.realtimedatabase.RealtimeDatabaseViewModel
 import com.project.healthcarebot.speechtotext.InputViewModel
@@ -48,13 +36,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    )
-
-    //permissions for the application
-    private val permissionViewModel by viewModels<PermissionViewModel>()
-    private val permissionsToRequest = arrayOf(
-        Manifest.permission.RECORD_AUDIO,
-        Manifest.permission.INTERNET,
     )
 
     //Speech to text
@@ -91,7 +72,6 @@ class MainActivity : ComponentActivity() {
         }
     )
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -103,51 +83,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             HealthcareBotTheme {
-                val dialogQueue = permissionViewModel.visiblePermissionDialogQueue
-                val multiplePermissionResultLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestMultiplePermissions(),
-                    onResult = { perms ->
-                        permissionsToRequest.forEach { permission ->
-                            permissionViewModel.onPermissionResult(
-                                permission = permission,
-                                isGranted = perms[permission] == true
-                            )
-                        }
-                    }
-                )
-
-                LaunchedEffect(Unit) {
-                    multiplePermissionResultLauncher.launch(permissionsToRequest)
-                }
-
-                dialogQueue
-                    .reversed()
-                    .forEach { permission ->
-                        PermissionDialog(
-                            permissionTextProvider = when (permission) {
-                                Manifest.permission.RECORD_AUDIO -> {
-                                    RecordAudioPermissionTextProvider()
-                                }
-
-                                Manifest.permission.INTERNET -> {
-                                    InternetPermissionTextProvider()
-                                }
-
-                                else -> return@forEach
-                            },
-                            isPermanentlyDeclined = !shouldShowRequestPermissionRationale(
-                                permission
-                            ),
-                            onDismiss = permissionViewModel::dismissDialog,
-                            onOkClick = {
-                                permissionViewModel.dismissDialog()
-                                multiplePermissionResultLauncher.launch(
-                                    arrayOf(permission)
-                                )
-                            },
-                            onGoToAppSettingsClick = ::openAppSettings
-                        )
-                    }
                 Navigation(
                     messageViewModel = messageViewModel,
                     inputViewModel = inputViewModel,
@@ -157,11 +92,4 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
-
-fun Activity.openAppSettings() {
-    Intent(
-        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-        Uri.fromParts("package", packageName, null)
-    ).also(::startActivity)
 }
