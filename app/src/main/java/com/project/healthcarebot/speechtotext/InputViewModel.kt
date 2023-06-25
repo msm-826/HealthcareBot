@@ -1,8 +1,8 @@
 package com.project.healthcarebot.speechtotext
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
@@ -18,7 +18,7 @@ sealed class RecordState {
 }
 
 class InputViewModel(private val stt: SpeechToText): ViewModel() {
-    // Textfield input
+    // Text field input
     var inputTextState by mutableStateOf(InputTextState())
         private set
 

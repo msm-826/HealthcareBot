@@ -12,4 +12,7 @@
     <string name="close">Close</string>
     <string name="microphone_permission">Microphone Permission</string>
     <string name="request_permission">Request permission</string>
+    <string name="yes">Yes</string>
+    <string name="clear_chat">Clear Chat</string>
+    <string name="clicking_on_yes_will_clear_all_the_chat_content">Are you sure you want to clear all the chat content !!!</string>
 </resources>

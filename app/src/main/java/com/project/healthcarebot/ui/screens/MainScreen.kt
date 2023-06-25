@@ -1,7 +1,6 @@
 package com.project.healthcarebot.ui.screens
 
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -86,12 +85,13 @@ import com.project.healthcarebot.database.Message
 import com.project.healthcarebot.database.MessageViewModel
 import com.project.healthcarebot.observeconnectivity.ConnectivityObserver
 import com.project.healthcarebot.observeconnectivity.ConnectivityViewModel
-import com.project.healthcarebot.ui.components.PermissionDialog
 import com.project.healthcarebot.realtimedatabase.RealtimeDatabaseViewModel
 import com.project.healthcarebot.speechtotext.InputViewModel
 import com.project.healthcarebot.speechtotext.RecordState
+import com.project.healthcarebot.ui.components.ClearChatDialog
 import com.project.healthcarebot.ui.components.LoadingAnimation
 import com.project.healthcarebot.ui.components.NetworkStateAlertDialog
+import com.project.healthcarebot.ui.components.PermissionDialog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -184,13 +184,12 @@ fun DrawerContentOfModalDrawer(
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-
     ModalDrawerSheet(
         drawerShape = RectangleShape,
         modifier = modifier
     ) {
         val selectedItemId = remember { mutableIntStateOf(1) }
+        var showClearChatDialog by remember { mutableStateOf(false) }
 
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -210,11 +209,19 @@ fun DrawerContentOfModalDrawer(
                 drawerState = drawerState,
                 scope = scope,
                 onSelect = {
-                    messageViewModel.clearAllMessages()
-                    Toast.makeText(context, "Chat Cleared", Toast.LENGTH_SHORT).show()
+                    showClearChatDialog = true
                 }
             )
         }
+
+        ClearChatDialog(
+            onConfirm = {
+                messageViewModel.clearAllMessages()
+                showClearChatDialog = false
+            },
+            onDismiss = { showClearChatDialog = false },
+            showDialog = showClearChatDialog
+        )
     }
 }
 
@@ -299,7 +306,7 @@ fun ChatContent(
             Row(modifier = Modifier
                 .fillMaxSize()
                 .padding(end = 32.dp), horizontalArrangement = Arrangement.Start) {
-                Card(shape = RoundedCornerShape(0.dp, 16.dp, 16.dp, 16.dp)) {
+                Card(shape = RoundedCornerShape(0.dp, 32.dp, 32.dp, 32.dp)) {
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
@@ -327,7 +334,7 @@ fun ChatContent(
                 Row(modifier = Modifier
                     .fillMaxSize()
                     .padding(start = 32.dp), horizontalArrangement = Arrangement.End) {
-                    Card(shape = RoundedCornerShape(16.dp, 0.dp, 16.dp, 16.dp)) {
+                    Card(shape = RoundedCornerShape(32.dp, 0.dp, 32.dp, 32.dp)) {
                         Column(
                             modifier = Modifier.padding(16.dp),
                         ) {
@@ -399,7 +406,10 @@ fun MicrophoneButton(
                             }
 
                             else -> {
-                                Log.d("permissionTag", "Permission Status: ${micPermissionState.status}")
+                                Log.d(
+                                    "permissionTag",
+                                    "Permission Status: ${micPermissionState.status}"
+                                )
                                 if (micPermissionState.status.isGranted) {
                                     showPermissionDialog = false
                                     pressed = true
@@ -457,11 +467,16 @@ fun UserInputTextField(
     val sendButtonStatus = messageViewModel.replyFetched.value && inputViewModel.inputTextState.inputText.isNotBlank()
     val networkStatus by connectivityViewModel.networkStatus.collectAsState()
     val replyStatus by realtimeDatabaseViewModel.replyStatus.collectAsState(null)
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        messageViewModel.initializeTextToSpeech(context)
+    }
 
     Row {
         Surface(
             tonalElevation = 2.dp,
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(32.dp),
             modifier = modifier
                 .fillMaxWidth()
                 .weight(1f)
@@ -577,6 +592,7 @@ fun UserInputTextField(
                     replyText = reply,
                     replyTimeStamp = System.currentTimeMillis()
                 )
+                messageViewModel.speakText(reply)
             }
         }
 
