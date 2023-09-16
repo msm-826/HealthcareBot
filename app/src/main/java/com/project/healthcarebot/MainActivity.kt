@@ -84,12 +84,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             HealthcareBotTheme {
-                /*Navigation(
-                    messageViewModel = messageViewModel,
-                    inputViewModel = inputViewModel,
-                    connectivityViewModel = connectivityViewModel,
-                    realtimeDatabaseViewModel = realtimeDatabaseViewModel
-                )*/
                 MainScreen(
                     messageViewModel = messageViewModel,
                     inputViewModel = inputViewModel,
