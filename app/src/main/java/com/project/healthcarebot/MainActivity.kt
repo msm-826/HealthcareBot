@@ -16,6 +16,7 @@ import com.project.healthcarebot.realtimedatabase.RealtimeDatabaseRepository
 import com.project.healthcarebot.realtimedatabase.RealtimeDatabaseViewModel
 import com.project.healthcarebot.speechtotext.InputViewModel
 import com.project.healthcarebot.speechtotext.RealSpeechToText
+import com.project.healthcarebot.ui.screens.MainScreen
 import com.project.healthcarebot.ui.theme.HealthcareBotTheme
 
 class MainActivity : ComponentActivity() {
@@ -32,7 +33,7 @@ class MainActivity : ComponentActivity() {
         factoryProducer = {
             object : ViewModelProvider.Factory {
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return MessageViewModel(db.messageDao()) as T
+                    return MessageViewModel(db.messageDao(), db.contactDao()) as T
                 }
             }
         }
@@ -83,7 +84,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             HealthcareBotTheme {
-                Navigation(
+                /*Navigation(
+                    messageViewModel = messageViewModel,
+                    inputViewModel = inputViewModel,
+                    connectivityViewModel = connectivityViewModel,
+                    realtimeDatabaseViewModel = realtimeDatabaseViewModel
+                )*/
+                MainScreen(
                     messageViewModel = messageViewModel,
                     inputViewModel = inputViewModel,
                     connectivityViewModel = connectivityViewModel,

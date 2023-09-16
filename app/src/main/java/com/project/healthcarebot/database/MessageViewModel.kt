@@ -18,7 +18,8 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 class MessageViewModel(
-    private val messageDao: MessageDao
+    private val messageDao: MessageDao,
+    private val contactDao: ContactDao
 ) : ViewModel() {
     fun getFullMessage(): Flow<List<Message>> = messageDao.getAllMessages()
 
@@ -96,4 +97,34 @@ class MessageViewModel(
         textToSpeech?.stop()
         textToSpeech?.shutdown()
     }
+
+
+    //Contacts
+    fun getFullContacts(): Flow<List<Contacts>> = contactDao.getAllContacts()
+
+    fun addContact(contact: Contacts) {
+        viewModelScope.launch {
+            val deferred = async { contactDao.insertContact(contact) }
+            deferred.await()
+        }
+    }
+
+    fun updateContact(id: Int, name: String, number: Long) {
+        viewModelScope.launch {
+            contactDao.updateContact(id, name, number)
+        }
+    }
+
+    fun deleteContact(id: Int) {
+        viewModelScope.launch {
+            contactDao.deleteContact(id)
+        }
+    }
+
+    /*fun getNumber(name: String): Int {
+        viewModelScope.launch {
+            return@launch contactDao.getNumber(name)
+        }
+    }*/
+    suspend fun getNumber(name: String): Long = contactDao.getNumber(name)
 }

@@ -22,3 +22,21 @@ interface MessageDao {
     @Query("SELECT MAX(id) FROM message")
     suspend fun getLastMessageIndex(): Int
 }
+
+@Dao
+interface ContactDao {
+    @Insert
+    suspend fun insertContact(contacts: Contacts)
+
+    @Query("UPDATE contacts SET name = :name, contactNumber = :number WHERE id = :id")
+    suspend fun updateContact(id: Int, name: String, number: Long)
+
+    @Query("SELECT * FROM contacts")
+    fun getAllContacts(): Flow<List<Contacts>>
+
+    @Query("DELETE FROM contacts where id = :id")
+    suspend fun deleteContact(id: Int)
+
+    @Query("SELECT contactNumber from contacts where name = :name")
+    suspend fun getNumber(name: String): Long
+}

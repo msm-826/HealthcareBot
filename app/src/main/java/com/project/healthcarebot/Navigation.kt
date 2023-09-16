@@ -11,6 +11,8 @@ import com.project.healthcarebot.ui.screens.LoginScreen
 import com.project.healthcarebot.ui.screens.MainScreen
 import com.project.healthcarebot.speechtotext.InputViewModel
 
+
+// not used since authentication is not setup
 @Composable
 fun Navigation(
     messageViewModel: MessageViewModel,

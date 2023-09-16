@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">HealthcareBot</string>
+    <string name="app_name">MedBot</string>
     <string name="get_started">"Get Started"</string>
     <string name="send">Send</string>
     <string name="mic">Microphone</string>
@@ -15,4 +15,5 @@
     <string name="yes">Yes</string>
     <string name="clear_chat">Clear Chat</string>
     <string name="clicking_on_yes_will_clear_all_the_chat_content">Are you sure you want to clear all the chat content !!!</string>
+    <string name="saved_contacts">Saved Contacts</string>
 </resources>

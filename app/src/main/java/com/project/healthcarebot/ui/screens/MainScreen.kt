@@ -1,5 +1,7 @@
 package com.project.healthcarebot.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -31,6 +33,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ClearAll
+import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
@@ -90,6 +93,7 @@ import com.project.healthcarebot.speechtotext.InputViewModel
 import com.project.healthcarebot.speechtotext.RecordState
 import com.project.healthcarebot.ui.components.ClearChatDialog
 import com.project.healthcarebot.ui.components.LoadingAnimation
+import com.project.healthcarebot.ui.components.ManageContact
 import com.project.healthcarebot.ui.components.NetworkStateAlertDialog
 import com.project.healthcarebot.ui.components.PermissionDialog
 import kotlinx.coroutines.CoroutineScope
@@ -97,6 +101,11 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+enum class ContentView{
+    MAIN_SCREEN,
+    CONTACT_SCREEN
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,6 +118,7 @@ fun MainScreen(
 ){
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val currentView = remember { mutableStateOf(ContentView.MAIN_SCREEN) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -117,19 +127,32 @@ fun MainScreen(
                 messageViewModel = messageViewModel,
                 drawerState = drawerState,
                 scope = scope,
+                currentView = currentView,
                 modifier = modifier
             )
         },
         content = {
-            MainContentOfModalDrawer(
-                messageViewModel = messageViewModel,
-                inputViewModel = inputViewModel,
-                connectivityViewModel = connectivityViewModel,
-                realtimeDatabaseViewModel = realtimeDatabaseViewModel,
-                drawerState = drawerState,
-                scope = scope,
-                modifier = modifier
-            )
+            when (currentView.value) {
+                ContentView.MAIN_SCREEN -> {
+                    MainContentOfModalDrawer(
+                        messageViewModel = messageViewModel,
+                        inputViewModel = inputViewModel,
+                        connectivityViewModel = connectivityViewModel,
+                        realtimeDatabaseViewModel = realtimeDatabaseViewModel,
+                        drawerState = drawerState,
+                        scope = scope,
+                        modifier = modifier
+                    )
+                }
+
+                ContentView.CONTACT_SCREEN -> {
+                    ContactScreen(
+                        messageViewModel = messageViewModel,
+                        drawerState = drawerState,
+                        scope = scope
+                    )
+                }
+            }
         }
     )
 }
@@ -146,7 +169,7 @@ fun MainContentOfModalDrawer(
     modifier: Modifier = Modifier
 ) {
     Scaffold(
-        topBar = { AppBar("Medicare" ,drawerState, scope) },
+        topBar = { AppBar("MedBot" ,drawerState, scope) },
         modifier = modifier,
     ) {paddingValues ->
         BoxWithConstraints {
@@ -182,6 +205,7 @@ fun DrawerContentOfModalDrawer(
     messageViewModel: MessageViewModel,
     drawerState: DrawerState,
     scope: CoroutineScope,
+    currentView: MutableState<ContentView>,
     modifier: Modifier = Modifier,
 ) {
     ModalDrawerSheet(
@@ -199,7 +223,10 @@ fun DrawerContentOfModalDrawer(
                 label = stringResource(R.string.home),
                 icon = Icons.Default.Home,
                 drawerState = drawerState,
-                scope = scope
+                scope = scope,
+                onSelect = {
+                    currentView.value = ContentView.MAIN_SCREEN
+                }
             )
             DrawerItem(
                 id = 2,
@@ -210,6 +237,17 @@ fun DrawerContentOfModalDrawer(
                 scope = scope,
                 onSelect = {
                     showClearChatDialog = true
+                }
+            )
+            DrawerItem(
+                id = 3,
+                selectedItemId = selectedItemId,
+                label = stringResource(R.string.saved_contacts),
+                icon = Icons.Default.Contacts,
+                drawerState = drawerState,
+                scope = scope,
+                onSelect = {
+                    currentView.value = ContentView.CONTACT_SCREEN
                 }
             )
         }
@@ -469,6 +507,8 @@ fun UserInputTextField(
     val replyStatus by realtimeDatabaseViewModel.replyStatus.collectAsState(null)
     val context = LocalContext.current
 
+    val contacts by messageViewModel.getFullContacts().collectAsState(initial = emptyList())
+
     LaunchedEffect(Unit) {
         messageViewModel.initializeTextToSpeech(context)
     }
@@ -587,12 +627,44 @@ fun UserInputTextField(
 
         LaunchedEffect(replyStatus) {
             replyStatus?.reply?.let {reply ->
-                messageViewModel.updateMessage(
-                    id = messageViewModel.currentMessageIndex.value,
-                    replyText = reply,
-                    replyTimeStamp = System.currentTimeMillis()
-                )
-                messageViewModel.speakText(reply)
+                when {
+                    reply.contains("contactxyz") -> {
+                        val regex = Regex("contactxyz(.*)")
+                        val matchResult = regex.find(reply)
+                        val extractedText = matchResult?.groupValues?.get(1) ?: ""
+
+                        val pNumber = messageViewModel.getNumber(extractedText).toString()
+                        if (pNumber == "0") {
+                            messageViewModel.updateMessage(
+                                id = messageViewModel.currentMessageIndex.value,
+                                replyText = ManageContact().manageContacts(contacts),
+                                replyTimeStamp = System.currentTimeMillis()
+                            )
+                            messageViewModel.speakText("Whom do you want to contact ?")
+                        } else {
+                            messageViewModel.updateMessage(
+                                id = messageViewModel.currentMessageIndex.value,
+                                replyText = "Opening the dialer",
+                                replyTimeStamp = System.currentTimeMillis()
+                            )
+
+                            val u = Uri.parse("tel:$pNumber")
+                            Log.d("dialer", "extracted text: $extractedText")
+                            val i = Intent(Intent.ACTION_DIAL, u)
+                            context.startActivity(i)
+                            messageViewModel.speakText("Opening the dialer")
+                        }
+                    }
+
+                    else -> {
+                        messageViewModel.updateMessage(
+                            id = messageViewModel.currentMessageIndex.value,
+                            replyText = reply,
+                            replyTimeStamp = System.currentTimeMillis()
+                        )
+                        messageViewModel.speakText(reply)
+                    }
+                }
             }
         }
 
