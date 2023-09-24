@@ -107,7 +107,6 @@ enum class ContentView{
     CONTACT_SCREEN
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     messageViewModel: MessageViewModel,
@@ -157,7 +156,6 @@ fun MainScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainContentOfModalDrawer(
     messageViewModel: MessageViewModel,
@@ -199,7 +197,6 @@ fun MainContentOfModalDrawer(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DrawerContentOfModalDrawer(
     messageViewModel: MessageViewModel,
@@ -263,7 +260,6 @@ fun DrawerContentOfModalDrawer(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DrawerItem(
     id: Int,

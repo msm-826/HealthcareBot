@@ -12,8 +12,8 @@ data class InputTextState(
 )
 
 sealed class RecordState {
-    object StartRecord : RecordState()
-    object EndRecord : RecordState()
+    data object StartRecord : RecordState()
+    data object EndRecord : RecordState()
     data class Update(val text: String): RecordState()
 }
 
